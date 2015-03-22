@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<cinder>
+    <block
+    name="Cinder-Profiler"
+    id="com.num3ric.profiler"
+    author="Eric Renaud-Houde"
+    license="BSD"
+    summary="Profiling functionalities for Cinder"
+    git="git@github.com:num3ric/Cinder-Profiler.git"
+    version="0.1"
+    libraryUrl="www.libcinder.org"
+    >
+
+    <sourcePattern>src/*.cpp</sourcePattern>
+    <headerPattern>src/*.h</headerPattern>
+    <includePath>src</includePath>
+</block>
+</cinder>
