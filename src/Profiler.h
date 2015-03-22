@@ -38,9 +38,9 @@ namespace perf {
 		static std::once_flag				mOnceFlag;
 		static std::unique_ptr<Profiler>	mInstance;
 		
-		class DualTimer {
+		class CpuGpuTimer {
 		public:
-			DualTimer();
+			CpuGpuTimer();
 			void		start( uint32_t frame );
 			glm::dvec2	stop();
 		private:
@@ -48,7 +48,7 @@ namespace perf {
 			ci::Timer	mTimerCpu;
 			uint32_t	mCurrentFrame = 0;
 		};
-		typedef std::unique_ptr<DualTimer> DualTimerU;
+		typedef std::unique_ptr<CpuGpuTimer> CpuGpuTimerPtr;
 		
 		void start( const std::string& name );
 		void stop( const std::string& name );
@@ -58,7 +58,7 @@ namespace perf {
 		double		mTotalFrameTime;
 		ci::Timer	mFrameTimer;
 		
-		std::unordered_map<std::string, DualTimerU> mTimers;
+		std::unordered_map<std::string, CpuGpuTimerPtr> mTimers;
 		
 		std::unordered_map<std::string, glm::dvec2> mCurrentTimes;
 		std::unordered_map<std::string, glm::dvec2> mAverageTimes;

@@ -57,14 +57,14 @@ Profiler::~Profiler()
 {
 }
 
-Profiler::DualTimer::DualTimer()
+Profiler::CpuGpuTimer::CpuGpuTimer()
 : mCurrentFrame( 0 )
 , mTimerGpu( gl::QueryTimeSwapped::create() )
 {
 	
 }
 
-void Profiler::DualTimer::start( uint32_t frame )
+void Profiler::CpuGpuTimer::start( uint32_t frame )
 {
 	if( mCurrentFrame == frame ) {
 		CI_LOG_E( "Cannot reuse the same timer on the same frame." );
@@ -77,7 +77,7 @@ void Profiler::DualTimer::start( uint32_t frame )
 	mCurrentFrame = frame;
 }
 
-glm::dvec2 Profiler::DualTimer::stop()
+glm::dvec2 Profiler::CpuGpuTimer::stop()
 {
 	mTimerCpu.stop();
 	mTimerGpu->end();
@@ -92,7 +92,7 @@ void Profiler::start( const std::string& name )
 	
 	auto frame = app::getElapsedFrames();
 	if( ! mTimers.count( name ) ) {
-		mTimers[name] = DualTimerU( new DualTimer );
+		mTimers[name] = CpuGpuTimerPtr( new CpuGpuTimer );
 	}
 	mTimers.at( name )->start( frame );
 }
