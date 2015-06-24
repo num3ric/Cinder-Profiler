@@ -1,147 +1,158 @@
 #include "Profiler.h"
 
 #include "cinder/app/App.h"
+#include "cinder/CinderAssert.h"
 #include "cinder/Log.h"
 
 using namespace perf;
 using namespace ci;
 
-ScopedTimer::ScopedTimer( const std::string& name )
-: mName( name )
+GpuTimerRef GpuTimer::create()
 {
-	Profiler::instance().start( mName );
+	return GpuTimerRef( new GpuTimer );
 }
 
-ScopedTimer::~ScopedTimer()
+GpuTimer::~GpuTimer()
 {
-	Profiler::instance().stop( mName );
+	if( mQueries[0] ) {
+		glDeleteQueries( TIMER_COUNT * TIMESTAMP_QUERY_COUNT, mQueries[0] );
+	}
 }
 
-std::unique_ptr<Profiler> Profiler::mInstance = nullptr;
-std::once_flag Profiler::mOnceFlag;
-
-Profiler& Profiler::instance()
-{
-	std::call_once( mOnceFlag,
-				   [] {
-					   mInstance.reset( new Profiler );
-				   } );
-	return *mInstance.get();
+void GpuTimer::reset() {
+	mElapsedTime = 0.0;
+	mIntervalCount = 0;
 }
 
-Profiler::Profiler()
-: mCurrentFrame( 0 )
-, mActiveQuery( false )
-, mTotalFrameTime( 0 )
+void GpuTimer::start()
 {
-	app::App::get()->getSignalUpdate().connect( [this]()
-	{
-		mFrameTimer.stop();
-		mTotalFrameTime = 1000.0 * mFrameTimer.getSeconds();
-		mFrameTimer.start();
-		
-		auto fid = app::getElapsedFrames();
-		
-		for( auto kv : mCurrentTimes ) {
-			auto& name = kv.first;
-			if( ! mAverageTimes.count( name) ) {
-				mAverageTimes[ name ] = kv.second;
+	getResults();  // add timings from previous start/stop if pending
+	glQueryCounter( mQueries[mIndex][TIMESTAMP_QUERY_BEGIN], GL_TIMESTAMP );
+}
+
+void GpuTimer::stop() 
+{
+	glQueryCounter( mQueries[mIndex][TIMESTAMP_QUERY_END], GL_TIMESTAMP );
+	mIsQueryInFlight[mIndex] = true;
+}
+
+int32_t GpuTimer::getIntervalCount() const
+{
+	return mIntervalCount;
+}
+
+double GpuTimer::getElapsedTime()
+{
+	getResults();
+
+	return mElapsedTime;
+}
+
+GpuTimer::GpuTimer()
+	: mElapsedTime( 0.f ), mIntervalCount( 0 ), mIndex( 0 )
+{
+	for( unsigned int i = 0; i < TIMER_COUNT; i++ ) {
+		mIsQueryInFlight[i] = false;
+	}
+
+	glGenQueries( TIMER_COUNT*TIMESTAMP_QUERY_COUNT, mQueries[0] );
+}
+
+void GpuTimer::getResults() {
+	// Make a pass over all timers - if any are pending results ("in flight"), then
+	// grab the the time diff and add to the accumulator.  Then, mark the timer as 
+	// not in flight and record it as a possible next timer to use (since it is
+	// now unused)
+	int32_t freeQuery = -1;
+	for( unsigned int i = 0; i < TIMER_COUNT; i++ ) {
+		// Are we awaiting a result?
+		if( mIsQueryInFlight[i] ) {
+			GLuint available = false;
+			glGetQueryObjectuiv( mQueries[i][TIMESTAMP_QUERY_END], GL_QUERY_RESULT_AVAILABLE, &available );
+
+			// Is the result ready?
+			if( available ) {
+				uint64_t timeStart, timeEnd;
+				glGetQueryObjectui64v( mQueries[i][TIMESTAMP_QUERY_BEGIN], GL_QUERY_RESULT, &timeStart );
+				glGetQueryObjectui64v( mQueries[i][TIMESTAMP_QUERY_END], GL_QUERY_RESULT, &timeEnd );
+
+				// add the time to the accumulator
+				mElapsedTime += double( timeEnd - timeStart ) * 1.e-6;
+				freeQuery = i;
+				mIsQueryInFlight[i] = false;
+
+				// Increment the counter of start/stop cycles
+				mIntervalCount++;
 			}
-			//cumulative running averages
-			mAverageTimes[ name ] = ( kv.second + double(fid) * mAverageTimes[ name ] ) / double( fid + 1 );
 		}
-	} );
-}
-
-Profiler::~Profiler()
-{
-}
-
-Profiler::CpuGpuTimer::CpuGpuTimer()
-: mCurrentFrame( 0 )
-, mTimerGpu( gl::QueryTimeSwapped::create() )
-{
-	
-}
-
-void Profiler::CpuGpuTimer::start( uint32_t frame )
-{
-	if( mCurrentFrame == frame ) {
-		CI_LOG_E( "Cannot reuse the same timer on the same frame." );
+	}
+	// Use the newly-freed counters if one exists
+	// otherwise, swap to the "next" counter
+	if( freeQuery >= 0 ) {
+		mIndex = freeQuery;
 	}
 	else {
-		mTimerCpu.start();
-		mTimerGpu->begin();
+		mIndex++;
+		mIndex = ( mIndex >= TIMER_COUNT ) ? 0 : mIndex;
 	}
-	
-	mCurrentFrame = frame;
 }
 
-glm::dvec2 Profiler::CpuGpuTimer::stop()
-{
-	mTimerCpu.stop();
-	mTimerGpu->end();
-	
-	return dvec2( 1000.0 * mTimerCpu.getSeconds(), mTimerGpu->getElapsedMilliseconds() );
-}
 
-void Profiler::start( const std::string& name )
+void CpuProfiler::start( const std::string& timerName )
 {
-	CI_ASSERT_MSG( ! mActiveQuery, "Cannot profile inner scope since glBeginQuery can only be called once per active target." );
-	mActiveQuery = true;
-	
-	auto frame = app::getElapsedFrames();
-	if( ! mTimers.count( name ) ) {
-		mTimers[name] = CpuGpuTimerPtr( new CpuGpuTimer );
-	}
-	mTimers.at( name )->start( frame );
-}
-
-void Profiler::stop( const std::string& name )
-{
-	if( mTimers.count( name ) ) {
-		mCurrentTimes[ name ] = mTimers.at( name )->stop();
+	if( ! mTimers.count( timerName ) ) {
+		mTimers.emplace( timerName, Timer( true ) );
 	}
 	else {
-		CI_ASSERT_MSG( false, "Scoped timer not contained in profile map at destruction." );
+		CI_ASSERT( mTimers.at( timerName ).isStopped() );
+		mTimers.at( timerName ).start();
 	}
-	mActiveQuery = false;
 }
 
-const std::unordered_map<std::string, glm::dvec2>& perf::getAverageTimes()
+void CpuProfiler::stop( const std::string& timerName )
 {
-	return Profiler::instance().getAverageTimes();
+	CI_ASSERT( mTimers.count( timerName ) );
+	CI_ASSERT( ! mTimers.at( timerName ).isStopped() );
+	mTimers.at( timerName ).stop();
 }
 
-const std::unordered_map<std::string, glm::dvec2>& perf::getCurrentTimes()
+std::unordered_map<std::string, double> CpuProfiler::getElapsedTimes()
 {
-	return Profiler::instance().getCurrentTimes();
-}
-
-double perf::getFrameTime()
-{
-	return Profiler::instance().getFrameTime();
-}
-
-#include "cinder/Utilities.h"
-#include "cinder/Text.h"
-#include "cinder/gl/Texture.h"
-
-void perf::draw( const glm::vec2& offset )
-{
-#ifdef PERF_ENABLED
-	TextLayout simple;
-	simple.setColor( Color::white() );
-	simple.addLine( "[ cpu time, gpu time ]" );
-	vec2 total;
-	for( auto kv : perf::getCurrentTimes() ) {
-		simple.addLine( toString( kv.second ) + " : " + kv.first );
-		total += kv.second;
+	std::unordered_map<std::string, double> elapsedTimes;
+	for( auto& kv : mTimers ) {
+		auto& timer = kv.second;
+		CI_ASSERT( timer.isStopped() );
+		elapsedTimes[kv.first] = timer.getSeconds() * 1.e3;
 	}
-	simple.addLine( "----------------------------" );
-	simple.addLine( toString( total ) );
-	simple.addLine( "Frame total: " + toString( perf::getFrameTime() ) + " ms" );
-	gl::draw( gl::Texture2d::create( simple.render( true, true ) ), offset );
-#endif
+	return elapsedTimes;
+}
+
+
+
+void GpuProfiler::start( const std::string& timerName )
+{
+	if( ! mTimers.count( timerName ) ) {
+		mTimers.emplace( timerName, GpuTimer::create() );
+	}
+	mTimers.at( timerName )->start();
+}
+
+void GpuProfiler::stop( const std::string& timerName ) {
+	CI_ASSERT( mTimers.count( timerName ) );
+	mTimers.at( timerName )->stop();
+}
+
+std::unordered_map<std::string, double> GpuProfiler::getElapsedTimes()
+{
+	std::unordered_map<std::string, double> elapsedTimes;
+	for( auto& kv : mTimers ) {
+		auto& timer = kv.second;
+		if( timer->getIntervalCount() > 0 ) {
+			auto time = timer->getElapsedTime() / timer->getIntervalCount();
+			elapsedTimes[kv.first] = time;
+			timer->reset();
+		}
+	}
+	return elapsedTimes;
 }
 

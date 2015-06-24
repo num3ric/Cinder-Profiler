@@ -1,12 +1,9 @@
 Cinder-Profiler
 ===========
 
-Profiling functionalities for cinder (WIP)
+Profiling functionalities for cinder
 -----------
 
-Use the `CI_PROFILE( __name__ )` to scope-profile a particular function.
+Use the `CI_SCOPED_CPU( profiler, name )` or `CI_SCOPED_GPU( profiler, name )` to scope-profile a particular function.
 
-`perf::draw( vec2 offset )` renders the cpu/gpu profiling information.
-
-![GUI](https://dl.dropboxusercontent.com/u/29102565/timer_gui.png)
 

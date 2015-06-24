@@ -3,72 +3,129 @@
 #include "cinder/gl/Query.h"
 #include "cinder/Timer.h"
 
-#define PERF_ENABLED
-
-#ifdef PERF_ENABLED
-#define CI_PROFILE( name ) perf::ScopedTimer timer{ name }
-#else
-#define CI_PROFILE( name )
-#endif
-
 #include <unordered_map>
-
-//TODO: Allow for CPU and/or GPU selection
 
 namespace perf {
 	
-	class ScopedTimer {
+	typedef std::shared_ptr<class GpuTimer> GpuTimerRef;
+
+	/* Taken from https://github.com/NVIDIAGameWorks/OpenGLSamples/blob/master/extensions/include/NvGLUtils/NvTimers.h
+	 * Use once per frame.
+	 */
+	class GpuTimer : public ci::Noncopyable {
 	public:
-		ScopedTimer( const std::string& name );
-		~ScopedTimer();
-	private:
-		std::string mName;
-	};
-	
-	class Profiler : public ci::Noncopyable {
-	public:
-		~Profiler();
-		static Profiler& instance();
-		double getFrameTime() const { return mTotalFrameTime; }
-		
-		const std::unordered_map<std::string, glm::dvec2>& getAverageTimes() const { return mAverageTimes; }
-		const std::unordered_map<std::string, glm::dvec2>& getCurrentTimes() const { return mCurrentTimes; }
+		static GpuTimerRef create();
+
+		virtual ~GpuTimer();
+
+		/// Resets the elapsed time and count of start/stop calls to zero
+		void reset();
+
+		/// Starts the timer (the next OpenGL call will be the first timed).
+		/// This must be called from a thread with the OpenGL context bound
+		void start();
+
+		/// Starts the timer (the previous OpenGL call will be the last timed).
+		/// This must be called from a thread with the OpenGL context bound
+		void stop();
+
+		/// Get the number of start/stop cycles whose values have been accumulated
+		/// since the last reset.  This value may be lower than the number of call
+		/// pairs to start/stop, as this value does not take into account the start/stop
+		/// cycles that are still "in flight" (awaiting results).
+		/// \return the number of start/stop cycles represented in the current 
+		/// accumulated time
+		int32_t getIntervalCount() const;
+
+		/// Get the amount of time accumulated for start/stop cycles that have completed
+		/// since the last reset.  This value may be lower than the time for all call
+		/// pairs to start/stop since the last reset, as this value does not take into 
+		/// account the start/stop cycles that are still "in flight" (awaiting results).
+		/// \return the accumulated time of completed start/stop cycles since the last reset
+		double getElapsedTime();
 	protected:
-		Profiler();
-		static std::once_flag				mOnceFlag;
-		static std::unique_ptr<Profiler>	mInstance;
-		
-		class CpuGpuTimer {
-		public:
-			CpuGpuTimer();
-			void		start( uint32_t frame );
-			glm::dvec2	stop();
-		private:
-			ci::gl::QueryTimeSwappedRef	mTimerGpu;
-			ci::Timer	mTimerCpu;
-			uint32_t	mCurrentFrame = 0;
+		/// Creates a stopped, zeroed timer
+		GpuTimer();
+
+		void getResults();
+
+		const static unsigned int TIMER_COUNT = 4;
+		enum {
+			TIMESTAMP_QUERY_BEGIN = 0,
+			TIMESTAMP_QUERY_END,
+			TIMESTAMP_QUERY_COUNT
 		};
-		typedef std::unique_ptr<CpuGpuTimer> CpuGpuTimerPtr;
-		
-		void start( const std::string& name );
-		void stop( const std::string& name );
-		
-		uint32_t	mCurrentFrame;
-		bool		mActiveQuery;
-		double		mTotalFrameTime;
-		ci::Timer	mFrameTimer;
-		
-		std::unordered_map<std::string, CpuGpuTimerPtr> mTimers;
-		
-		std::unordered_map<std::string, glm::dvec2> mCurrentTimes;
-		std::unordered_map<std::string, glm::dvec2> mAverageTimes;
-		friend class ScopedTimer;		
+
+		GLuint		mQueries[TIMER_COUNT][TIMESTAMP_QUERY_COUNT];
+		bool		mIsQueryInFlight[TIMER_COUNT];
+		uint8_t		mIndex;
+
+		double		mElapsedTime;
+		int32_t		mIntervalCount;
 	};
-	
-	const std::unordered_map<std::string, glm::dvec2>& getAverageTimes();
-	const std::unordered_map<std::string, glm::dvec2>& getCurrentTimes();
-	double getFrameTime();
-	
-	void draw( const glm::vec2& offset = glm::vec2(0) );
+
+
+	class CpuProfiler {
+	public:
+		void start( const std::string& timerName );
+		void stop( const std::string& timerName );
+
+		std::unordered_map<std::string, double> getElapsedTimes();
+	private:
+		std::unordered_map<std::string, ci::Timer> mTimers;
+	};
+
+	class GpuProfiler {
+	public:
+		void start( const std::string& timerName );
+		void stop( const std::string& timerName );
+
+		std::unordered_map<std::string, double> getElapsedTimes();
+	private:
+		std::unordered_map<std::string, GpuTimerRef> mTimers;
+	};
+
+
+	struct ScopedCpuProfiler {
+		ScopedCpuProfiler( CpuProfiler& profiler, const std::string& timerName )
+			: mProfiler( &profiler ), mTimerName( timerName )
+		{
+			mProfiler->start( mTimerName );
+		}
+		~ScopedCpuProfiler()
+		{
+			mProfiler->stop( mTimerName );
+		}
+	private:
+		CpuProfiler *	mProfiler;
+		std::string		mTimerName;
+	};
+
+
+	struct ScopedGpuProfiler {
+		ScopedGpuProfiler( GpuProfiler& profiler, const std::string& timerName )
+			: mProfiler( &profiler ), mTimerName( timerName )
+		{
+			mProfiler->start( mTimerName );
+		}
+		~ScopedGpuProfiler()
+		{
+			mProfiler->stop( mTimerName );
+		}
+	private:
+		std::string		mTimerName;
+		GpuProfiler *	mProfiler;
+	};
 }
+
+#define CI_PROFILING
+
+#ifdef CI_PROFILING
+#define CI_SCOPED_CPU( profiler, name ) perf::ScopedCpuProfiler __ci_cpu_profile{ profiler, name }
+#define CI_SCOPED_GPU( profiler, name ) perf::ScopedGpuProfiler __ci_gpu_profile{ profiler, name }
+#else
+#define CI_SCOPED_CPU( profiler, name )
+#define CI_SCOPED_GPU( profiler, name )
+#endif
+
 
