@@ -2,6 +2,7 @@
 
 #include "cinder/gl/Query.h"
 #include "cinder/Timer.h"
+#include "cinder/Noncopyable.h"
 
 #include <unordered_map>
 
