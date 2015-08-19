@@ -3,6 +3,7 @@
 #include "cinder/gl/gl.h"
 #include "cinder/Rand.h"
 
+#define CI_PROFILING // enables the scoped profiling calls
 #include "Profiler.h"
 
 using namespace ci;

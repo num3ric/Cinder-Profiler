@@ -1,18 +1,28 @@
 #pragma once
 
-#include "cinder/gl/Query.h"
 #include "cinder/Timer.h"
 #include "cinder/Noncopyable.h"
+#include "cinder/gl/Query.h"
 
 #include <unordered_map>
+#include <string>
+
+#ifdef CI_PROFILING
+#define CI_SCOPED_CPU( profiler, name ) perf::ScopedCpuProfiler __ci_cpu_profile{ profiler, name }
+#define CI_SCOPED_GPU( profiler, name ) perf::ScopedGpuProfiler __ci_gpu_profile{ profiler, name }
+#else
+#define CI_SCOPED_CPU( profiler, name )
+#define CI_SCOPED_GPU( profiler, name )
+#endif
 
 namespace perf {
-	
+
+#if defined( CINDER_MSW )
 	typedef std::shared_ptr<class GpuTimer> GpuTimerRef;
 
 	/* Taken from https://github.com/NVIDIAGameWorks/OpenGLSamples/blob/master/extensions/include/NvGLUtils/NvTimers.h
-	 * Use once per frame.
-	 */
+	* Use once per frame.
+	*/
 	class GpuTimer : public ci::Noncopyable {
 	public:
 		static GpuTimerRef create();
@@ -24,23 +34,23 @@ namespace perf {
 
 		/// Starts the timer (the next OpenGL call will be the first timed).
 		/// This must be called from a thread with the OpenGL context bound
-		void start();
+		void begin();
 
 		/// Starts the timer (the previous OpenGL call will be the last timed).
 		/// This must be called from a thread with the OpenGL context bound
-		void stop();
+		void end();
 
 		/// Get the number of start/stop cycles whose values have been accumulated
 		/// since the last reset.  This value may be lower than the number of call
 		/// pairs to start/stop, as this value does not take into account the start/stop
 		/// cycles that are still "in flight" (awaiting results).
-		/// \return the number of start/stop cycles represented in the current 
+		/// \return the number of start/stop cycles represented in the current
 		/// accumulated time
 		int32_t getIntervalCount() const;
 
 		/// Get the amount of time accumulated for start/stop cycles that have completed
 		/// since the last reset.  This value may be lower than the time for all call
-		/// pairs to start/stop since the last reset, as this value does not take into 
+		/// pairs to start/stop since the last reset, as this value does not take into
 		/// account the start/stop cycles that are still "in flight" (awaiting results).
 		/// \return the accumulated time of completed start/stop cycles since the last reset
 		double getElapsedTime();
@@ -64,9 +74,12 @@ namespace perf {
 		double		mElapsedTime;
 		int32_t		mIntervalCount;
 	};
+#else
+	typedef ci::gl::QueryTimeSwapped	GpuTimer;
+	typedef ci::gl::QueryTimeSwappedRef	GpuTimerRef;
+#endif
 
-
-	class CpuProfiler {
+	class CpuProfiler : public ci::Noncopyable {
 	public:
 		void start( const std::string& timerName );
 		void stop( const std::string& timerName );
@@ -76,7 +89,7 @@ namespace perf {
 		std::unordered_map<std::string, ci::Timer> mTimers;
 	};
 
-	class GpuProfiler {
+	class GpuProfiler : public ci::Noncopyable {
 	public:
 		void start( const std::string& timerName );
 		void stop( const std::string& timerName );
@@ -84,6 +97,10 @@ namespace perf {
 		std::unordered_map<std::string, double> getElapsedTimes();
 	private:
 		std::unordered_map<std::string, GpuTimerRef> mTimers;
+
+#if ! defined( CINDER_MSW )
+		static bool		sActiveTimer;
+#endif
 	};
 
 
@@ -118,15 +135,4 @@ namespace perf {
 		GpuProfiler *	mProfiler;
 	};
 }
-
-#define CI_PROFILING
-
-#ifdef CI_PROFILING
-#define CI_SCOPED_CPU( profiler, name ) perf::ScopedCpuProfiler __ci_cpu_profile{ profiler, name }
-#define CI_SCOPED_GPU( profiler, name ) perf::ScopedGpuProfiler __ci_gpu_profile{ profiler, name }
-#else
-#define CI_SCOPED_CPU( profiler, name )
-#define CI_SCOPED_GPU( profiler, name )
-#endif
-
 

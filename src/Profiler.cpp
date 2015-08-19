@@ -7,6 +7,7 @@
 using namespace perf;
 using namespace ci;
 
+#if defined( CINDER_MSW )
 GpuTimerRef GpuTimer::create()
 {
 	return GpuTimerRef( new GpuTimer );
@@ -24,13 +25,13 @@ void GpuTimer::reset() {
 	mIntervalCount = 0;
 }
 
-void GpuTimer::start()
+void GpuTimer::begin()
 {
 	getResults();  // add timings from previous start/stop if pending
 	glQueryCounter( mQueries[mIndex][TIMESTAMP_QUERY_BEGIN], GL_TIMESTAMP );
 }
 
-void GpuTimer::stop() 
+void GpuTimer::end()
 {
 	glQueryCounter( mQueries[mIndex][TIMESTAMP_QUERY_END], GL_TIMESTAMP );
 	mIsQueryInFlight[mIndex] = true;
@@ -60,7 +61,7 @@ GpuTimer::GpuTimer()
 
 void GpuTimer::getResults() {
 	// Make a pass over all timers - if any are pending results ("in flight"), then
-	// grab the the time diff and add to the accumulator.  Then, mark the timer as 
+	// grab the the time diff and add to the accumulator.  Then, mark the timer as
 	// not in flight and record it as a possible next timer to use (since it is
 	// now unused)
 	int32_t freeQuery = -1;
@@ -93,14 +94,14 @@ void GpuTimer::getResults() {
 	}
 	else {
 		mIndex++;
-		mIndex = ( mIndex >= TIMER_COUNT ) ? 0 : mIndex;
+		mIndex = (mIndex >= TIMER_COUNT) ? 0 : mIndex;
 	}
 }
-
+#endif
 
 void CpuProfiler::start( const std::string& timerName )
 {
-	if( ! mTimers.count( timerName ) ) {
+	if( !mTimers.count( timerName ) ) {
 		mTimers.emplace( timerName, Timer( true ) );
 	}
 	else {
@@ -109,10 +110,11 @@ void CpuProfiler::start( const std::string& timerName )
 	}
 }
 
+
 void CpuProfiler::stop( const std::string& timerName )
 {
 	CI_ASSERT( mTimers.count( timerName ) );
-	CI_ASSERT( ! mTimers.at( timerName ).isStopped() );
+	CI_ASSERT( !mTimers.at( timerName ).isStopped() );
 	mTimers.at( timerName ).stop();
 }
 
@@ -127,19 +129,31 @@ std::unordered_map<std::string, double> CpuProfiler::getElapsedTimes()
 	return elapsedTimes;
 }
 
-
+#if ! defined( CINDER_MSW )
+bool GpuProfiler::sActiveTimer = false;
+#endif
 
 void GpuProfiler::start( const std::string& timerName )
 {
-	if( ! mTimers.count( timerName ) ) {
+#if ! defined( CINDER_MSW )
+	if( sActiveTimer ) {
+		throw std::runtime_error( "Cannot use inner-scope gpu time queries." );
+	}
+	sActiveTimer = true;
+#endif
+	if( !mTimers.count( timerName ) ) {
 		mTimers.emplace( timerName, GpuTimer::create() );
 	}
-	mTimers.at( timerName )->start();
+	mTimers.at( timerName )->begin();
 }
 
-void GpuProfiler::stop( const std::string& timerName ) {
+void GpuProfiler::stop( const std::string& timerName )
+{
 	CI_ASSERT( mTimers.count( timerName ) );
-	mTimers.at( timerName )->stop();
+	mTimers.at( timerName )->end();
+#if ! defined( CINDER_MSW )
+	sActiveTimer = false;
+#endif
 }
 
 std::unordered_map<std::string, double> GpuProfiler::getElapsedTimes()
@@ -147,11 +161,15 @@ std::unordered_map<std::string, double> GpuProfiler::getElapsedTimes()
 	std::unordered_map<std::string, double> elapsedTimes;
 	for( auto& kv : mTimers ) {
 		auto& timer = kv.second;
+#if defined( CINDER_MSW )
 		if( timer->getIntervalCount() > 0 ) {
 			auto time = timer->getElapsedTime() / timer->getIntervalCount();
 			elapsedTimes[kv.first] = time;
 			timer->reset();
 		}
+#else
+		elapsedTimes[kv.first] = timer->getElapsedMilliseconds();
+#endif
 	}
 	return elapsedTimes;
 }
