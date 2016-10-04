@@ -174,3 +174,45 @@ std::unordered_map<std::string, double> GpuProfiler::getElapsedTimes()
 	return elapsedTimes;
 }
 
+perf::CpuProfiler&	perf::detail::globalCpuProfiler()
+{
+	static perf::CpuProfiler sInstance;
+	return sInstance;
+}
+
+perf::GpuProfiler&	perf::detail::globalGpuProfiler()
+{
+	static perf::GpuProfiler sInstance;
+	return sInstance;
+}
+
+void perf::printProfiling( uint32_t skippedFrameCount )
+{
+#if CI_PROFILING
+	perf::printProfiling( perf::detail::globalCpuProfiler(), perf::detail::globalGpuProfiler(), skippedFrameCount );
+#endif // CI_PROFILING
+}
+
+void perf::printProfiling( perf::CpuProfiler& cpuProfiler, perf::GpuProfiler& gpuProfiler, uint32_t skippedFrameCount )
+{
+#if CI_PROFILING
+	bool print = (skippedFrameCount) ? (app::getElapsedFrames() % skippedFrameCount == 1) : true;
+	if( print ) {
+		app::console() << "[FPS] " << app::AppBase::get()->getAverageFps() << std::endl;
+		if( !gpuProfiler.getElapsedTimes().empty() ) {
+			cinder::app::console() << "[GPU times]" << std::endl;
+			for( const auto& kv : gpuProfiler.getElapsedTimes() ) {
+				cinder::app::console() << "	" << kv.first << " : " << kv.second << std::endl;
+			}
+		}
+		if( !cpuProfiler.getElapsedTimes().empty() ) {
+			cinder::app::console() << "[CPU times]" << std::endl;
+			for( const auto& kv : cpuProfiler.getElapsedTimes() ) {
+				cinder::app::console() << "	" << kv.first << " : " << kv.second << std::endl;
+			}
+		}
+	}
+#endif // CI_PROFILING
+}
+
+

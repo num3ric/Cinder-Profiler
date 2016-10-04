@@ -7,10 +7,19 @@
 #include <unordered_map>
 #include <string>
 
+//! set to 0 to enable profiling
+#define CI_PROFILING 1
+
 #ifdef CI_PROFILING
+#define CI_PROFILE_CPU( name )	CI_SCOPED_CPU( perf::detail::globalCpuProfiler(), name ) 
+#define CI_PROFILE_GPU( name )	CI_SCOPED_GPU( perf::detail::globalGpuProfiler(), name ) 
+
 #define CI_SCOPED_CPU( profiler, name ) perf::ScopedCpuProfiler __ci_cpu_profile{ profiler, name }
 #define CI_SCOPED_GPU( profiler, name ) perf::ScopedGpuProfiler __ci_gpu_profile{ profiler, name }
 #else
+#define CI_PROFILE_CPU( name )
+#define CI_PROFILE_GPU( name )
+
 #define CI_SCOPED_CPU( profiler, name )
 #define CI_SCOPED_GPU( profiler, name )
 #endif
@@ -134,5 +143,13 @@ namespace perf {
 		std::string		mTimerName;
 		GpuProfiler *	mProfiler;
 	};
+
+	void printProfiling( uint32_t skippedFrameCount = 20 );
+	void printProfiling( perf::CpuProfiler& cpuProfiler, perf::GpuProfiler& gpuProfiler, uint32_t skippedFrameCount = 20 );
+
+	namespace detail {
+		perf::CpuProfiler&	globalCpuProfiler();
+		perf::GpuProfiler&	globalGpuProfiler();
+	}
 }
 

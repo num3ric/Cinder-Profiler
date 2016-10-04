@@ -12,6 +12,8 @@ lib/
 Eigen/
 
 # Windows cruft
+*.VC.opendb
+*.VC.db
 *.suo
 *.ncb
 *.sdf
