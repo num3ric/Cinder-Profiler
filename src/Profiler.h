@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <string>
 
-//! set to 0 to enable profiling
+//! set to 0 to disable profiling
 #define CI_PROFILING 1
 
 #ifdef CI_PROFILING

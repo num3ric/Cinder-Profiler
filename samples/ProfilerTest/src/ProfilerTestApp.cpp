@@ -3,7 +3,6 @@
 #include "cinder/gl/gl.h"
 #include "cinder/Rand.h"
 
-#define CI_PROFILING // enables the scoped profiling calls
 #include "Profiler.h"
 
 using namespace ci;
@@ -17,9 +16,6 @@ public:
 	void draw() override;
 private:
 	gl::GlslProgRef			mNoiseShader;
-
-	perf::CpuProfiler			mCpuProfiler;
-	perf::GpuProfiler			mGpuProfiler;
 };
 
 ProfilerTestApp::ProfilerTestApp()
@@ -27,20 +23,7 @@ ProfilerTestApp::ProfilerTestApp()
 	mNoiseShader = gl::GlslProg::create( loadAsset( "pass.vert" ), loadAsset( "noise.frag" ) );
 
 	getWindow()->getSignalPostDraw().connect( [this]() {
-		if( app::getElapsedFrames() % 20 == 1 ) {
-
-			app::console() << "[FPS] " << getAverageFps() << std::endl;
-
-			app::console() << "[GPU times]" << std::endl;
-			for( auto kv : mGpuProfiler.getElapsedTimes() ) {
-				app::console() << "	" << kv.first << " : " << kv.second << std::endl;
-			}
-
-			app::console() << "[CPU times]" << std::endl;
-			for( auto kv : mCpuProfiler.getElapsedTimes() ) {
-				app::console() << "	" << kv.first << " : " << kv.second << std::endl;
-			}
-		}
+		perf::printProfiling();
 	} );
 
 	gl::getStockShader( gl::ShaderDef().color() )->bind();
@@ -51,8 +34,8 @@ void ProfilerTestApp::update()
 
 void ProfilerTestApp::draw()
 {
-	CI_SCOPED_CPU( mCpuProfiler, "Draw" );
-	CI_SCOPED_GPU( mGpuProfiler, "Draw" );
+	CI_PROFILE_CPU( "Draw" );
+	CI_PROFILE_GPU( "Draw" );
 
 	gl::clear();
 
@@ -63,7 +46,7 @@ void ProfilerTestApp::draw()
 
 	// Expensive GPU pass
 	{
-		CI_SCOPED_GPU( mGpuProfiler, "Noise pass" );
+		CI_PROFILE_GPU( "Noise pass" );
 		gl::ScopedGlslProg s( mNoiseShader );
 		mNoiseShader->uniform( "uTime", (float)app::getElapsedSeconds() );
 		gl::drawSolidRect( app::getWindowBounds() );
