@@ -8,9 +8,11 @@
 #include <string>
 
 //! set to 0 to disable profiling
+#ifndef CI_PROFILING
 #define CI_PROFILING 1
+#endif
 
-#ifdef CI_PROFILING
+#if CI_PROFILING
 #define CI_PROFILE_CPU( name )	CI_SCOPED_CPU( perf::detail::globalCpuProfiler(), name ) 
 #define CI_PROFILE_GPU( name )	CI_SCOPED_GPU( perf::detail::globalGpuProfiler(), name ) 
 
