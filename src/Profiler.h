@@ -26,6 +26,16 @@
 #define CI_SCOPED_GPU( profiler, name )
 #endif
 
+#if defined( CINDER_DLL )
+	#if defined( PERF_EXPORT )
+		#define PERF_API __declspec(dllexport)
+	#else
+		#define PERF_API __declspec(dllimport)
+	#endif
+#else
+	#define PERF_API
+#endif
+
 namespace perf {
 
 #if defined( CINDER_MSW )
@@ -34,7 +44,7 @@ namespace perf {
 	/* Taken from https://github.com/NVIDIAGameWorks/OpenGLSamples/blob/master/extensions/include/NvGLUtils/NvTimers.h
 	* Use once per frame.
 	*/
-	class GpuTimer : public ci::Noncopyable {
+	class PERF_API GpuTimer : public ci::Noncopyable {
 	public:
 		static GpuTimerRef create();
 
@@ -90,7 +100,7 @@ namespace perf {
 	typedef ci::gl::QueryTimeSwappedRef	GpuTimerRef;
 #endif
 
-	class CpuProfiler : public ci::Noncopyable {
+	class PERF_API CpuProfiler : public ci::Noncopyable {
 	public:
 		void start( const std::string& timerName );
 		void stop( const std::string& timerName );
@@ -100,7 +110,7 @@ namespace perf {
 		std::unordered_map<std::string, ci::Timer> mTimers;
 	};
 
-	class GpuProfiler : public ci::Noncopyable {
+	class PERF_API GpuProfiler : public ci::Noncopyable {
 	public:
 		void start( const std::string& timerName );
 		void stop( const std::string& timerName );
@@ -146,12 +156,12 @@ namespace perf {
 		GpuProfiler *	mProfiler;
 	};
 
-	void printProfiling( uint32_t skippedFrameCount = 20 );
-	void printProfiling( perf::CpuProfiler& cpuProfiler, perf::GpuProfiler& gpuProfiler, uint32_t skippedFrameCount = 20 );
+	PERF_API void printProfiling( uint32_t skippedFrameCount = 20 );
+	PERF_API void printProfiling( perf::CpuProfiler& cpuProfiler, perf::GpuProfiler& gpuProfiler, uint32_t skippedFrameCount = 20 );
 
 	namespace detail {
-		perf::CpuProfiler&	globalCpuProfiler();
-		perf::GpuProfiler&	globalGpuProfiler();
+		PERF_API perf::CpuProfiler&	globalCpuProfiler();
+		PERF_API perf::GpuProfiler&	globalGpuProfiler();
 	}
 }
 
