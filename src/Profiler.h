@@ -17,9 +17,12 @@
 	#define CI_PROFILE_CPU( name, ... )		perf::ScopedCpuProfiler __ci_cpu_profile{ name, ##__VA_ARGS__ }
 	//! Constructs a ScopedGpuProfiler with identifier \a name. Uses the global GpuProfiler instance by default, you can optionally pass in a separate instance as the second parameter.
 	#define CI_PROFILE_GPU( name, ... )		perf::ScopedGpuProfiler __ci_gpu_profile{ name, ##__VA_ARGS__ }
+	//! Constructs both a ScopedCpuProfiler and ScopedGpuProfiler, using the global profiler instances.
+	#define CI_PROFILE( name )				CI_PROFILE_CPU( name ); CI_PROFILE_GPU( name )
 #else
 	#define CI_PROFILE_CPU( name )
 	#define CI_PROFILE_GPU( name )
+	#define CI_PROFILE( name )
 #endif
 
 #if defined( CINDER_DLL )
