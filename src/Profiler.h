@@ -9,21 +9,20 @@
 
 //! set to 0 to disable profiling
 #ifndef CI_PROFILING
-#define CI_PROFILING 1
+	#define CI_PROFILING 1
 #endif
 
 #if CI_PROFILING
-#define CI_PROFILE_CPU( name )	CI_SCOPED_CPU( perf::detail::globalCpuProfiler(), name ) 
-#define CI_PROFILE_GPU( name )	CI_SCOPED_GPU( perf::detail::globalGpuProfiler(), name ) 
-
-#define CI_SCOPED_CPU( profiler, name ) perf::ScopedCpuProfiler __ci_cpu_profile{ profiler, name }
-#define CI_SCOPED_GPU( profiler, name ) perf::ScopedGpuProfiler __ci_gpu_profile{ profiler, name }
+	//! Constructs a ScopedCpuProfiler with identifier \a name. Uses the global CpuProfiler instance by default, you can optionally pass in a separate instance as the second parameter.
+	#define CI_PROFILE_CPU( name, ... )		perf::ScopedCpuProfiler __ci_cpu_profile{ name, ##__VA_ARGS__ }
+	//! Constructs a ScopedGpuProfiler with identifier \a name. Uses the global GpuProfiler instance by default, you can optionally pass in a separate instance as the second parameter.
+	#define CI_PROFILE_GPU( name, ... )		perf::ScopedGpuProfiler __ci_gpu_profile{ name, ##__VA_ARGS__ }
+	//! Constructs both a ScopedCpuProfiler and ScopedGpuProfiler, using the global profiler instances.
+	#define CI_PROFILE( name )				CI_PROFILE_CPU( name ); CI_PROFILE_GPU( name )
 #else
-#define CI_PROFILE_CPU( name )
-#define CI_PROFILE_GPU( name )
-
-#define CI_SCOPED_CPU( profiler, name )
-#define CI_SCOPED_GPU( profiler, name )
+	#define CI_PROFILE_CPU( name )
+	#define CI_PROFILE_GPU( name )
+	#define CI_PROFILE( name )
 #endif
 
 #if defined( CINDER_DLL )
@@ -124,9 +123,13 @@ namespace perf {
 #endif
 	};
 
+	namespace detail {
+		PERF_API perf::CpuProfiler&	globalCpuProfiler();
+		PERF_API perf::GpuProfiler&	globalGpuProfiler();
+	}
 
 	struct ScopedCpuProfiler {
-		ScopedCpuProfiler( CpuProfiler& profiler, const std::string& timerName )
+		ScopedCpuProfiler( const std::string& timerName, CpuProfiler& profiler = detail::globalCpuProfiler() )
 			: mProfiler( &profiler ), mTimerName( timerName )
 		{
 			mProfiler->start( mTimerName );
@@ -142,7 +145,7 @@ namespace perf {
 
 
 	struct ScopedGpuProfiler {
-		ScopedGpuProfiler( GpuProfiler& profiler, const std::string& timerName )
+		ScopedGpuProfiler( const std::string& timerName, GpuProfiler& profiler = detail::globalGpuProfiler() )
 			: mProfiler( &profiler ), mTimerName( timerName )
 		{
 			mProfiler->start( mTimerName );
@@ -158,10 +161,5 @@ namespace perf {
 
 	PERF_API void printProfiling( uint32_t skippedFrameCount = 20 );
 	PERF_API void printProfiling( perf::CpuProfiler& cpuProfiler, perf::GpuProfiler& gpuProfiler, uint32_t skippedFrameCount = 20 );
-
-	namespace detail {
-		PERF_API perf::CpuProfiler&	globalCpuProfiler();
-		PERF_API perf::GpuProfiler&	globalGpuProfiler();
-	}
 }
 
