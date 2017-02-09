@@ -34,8 +34,7 @@ void ProfilerTestApp::update()
 
 void ProfilerTestApp::draw()
 {
-	CI_PROFILE_CPU( "Draw" );
-	CI_PROFILE_GPU( "Draw" );
+	CI_PROFILE( "Draw" );
 
 	gl::clear();
 
