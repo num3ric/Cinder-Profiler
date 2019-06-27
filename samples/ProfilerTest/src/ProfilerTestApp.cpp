@@ -4,6 +4,7 @@
 #include "cinder/Rand.h"
 
 #include "Profiler.h"
+#include "ProfilerGui.h" 
 
 using namespace ci;
 using namespace ci::app;
