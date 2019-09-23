@@ -101,6 +101,7 @@ namespace perf {
 	public:
 		void start( const std::string& timerName );
 		void stop( const std::string& timerName );
+		void clear();
 
 		std::unordered_map<std::string, double> getElapsedTimes();
 	private:
@@ -111,6 +112,7 @@ namespace perf {
 	public:
 		void start( const std::string& timerName );
 		void stop( const std::string& timerName );
+		void clear();
 
 		std::unordered_map<std::string, double> getElapsedTimes();
 	private:

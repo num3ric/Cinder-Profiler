@@ -118,6 +118,11 @@ void CpuProfiler::stop( const std::string& timerName )
 	mTimers.at( timerName ).stop();
 }
 
+void CpuProfiler::clear()
+{
+	mTimers.clear();
+}
+
 std::unordered_map<std::string, double> CpuProfiler::getElapsedTimes()
 {
 	std::unordered_map<std::string, double> elapsedTimes;
@@ -154,6 +159,11 @@ void GpuProfiler::stop( const std::string& timerName )
 #if ! defined( CINDER_MSW )
 	sActiveTimer = false;
 #endif
+}
+
+void GpuProfiler::clear()
+{
+	mTimers.clear();
 }
 
 std::unordered_map<std::string, double> GpuProfiler::getElapsedTimes()
