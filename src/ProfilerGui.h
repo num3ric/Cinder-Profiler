@@ -2,6 +2,7 @@
 
 #include "cinder/Timer.h"
 #include "cinder/app/App.h"
+#include "cinder/CinderImGui.h"
 
 #include "Profiler.h"
 #include <list>
