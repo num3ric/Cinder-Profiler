@@ -2,7 +2,6 @@ add_library(${PROJECT_NAME})
 target_sources(${PROJECT_NAME}
     PRIVATE
         Profiler.cpp
-    PUBLIC
         Profiler.h
         ProfilerGui.h
 )
@@ -21,5 +20,3 @@ set_target_properties(${PROJECT_NAME}
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../lib/$(PlatformTarget)/$(PlatformToolset)
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../bin/$(PlatformTarget)/$(PlatformToolset)
 )
-
-
