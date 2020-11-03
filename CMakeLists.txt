@@ -14,7 +14,9 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     set( CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-get_filename_component( CINDER_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../Cinder" ABSOLUTE )
+if(NOT DEFINED CINDER_PATH)
+    get_filename_component( CINDER_PATH "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE )
+endif()
 include( "${CINDER_PATH}/proj/cmake/configure.cmake" )
 find_package( cinder REQUIRED PATHS "${CINDER_PATH}/${CINDER_LIB_DIRECTORY}" )
 
