@@ -103,7 +103,7 @@ class ProfilerGui {
 			return result;
 		}
 
-		bool  setIsActive( bool active ) { mActive = active; }
+		void  setIsActive( bool active ) { mActive = active; }
 		bool  getIsActive() const { return mActive; }
 
 		float getCurrent() const { return mHistory.back(); }

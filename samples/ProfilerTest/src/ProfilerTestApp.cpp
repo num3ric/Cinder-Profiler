@@ -47,7 +47,7 @@ void ProfilerTestApp::draw()
 	// Expensive GPU pass
 	{
 #if ! defined( CINDER_COCOA )
-		CI_PROFILE_GPU( "Noise pass" );
+//		CI_PROFILE_GPU( "Noise pass" );
 #endif
 		gl::ScopedGlslProg s( mNoiseShader );
 		mNoiseShader->uniform( "uTime", (float)app::getElapsedSeconds() );
@@ -57,7 +57,7 @@ void ProfilerTestApp::draw()
 	// More gpu work...
 	gl::drawSolidCircle( app::getWindowSize()/2, 100.0f, 50000 );
 
-	CI_CHECK_GL();
+	//CI_CHECK_GL();
 }
 
 CINDER_APP( ProfilerTestApp, RendererGl, []( App::Settings * settings )

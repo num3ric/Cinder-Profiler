@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 project(
-    libprofiler
+    RvProfiler
     VERSION 0.1
     DESCRIPTION "Cinder block for basic cpu and gpu time profiling."
     LANGUAGES CXX
@@ -28,7 +28,7 @@ if( BUILD_SAMPLES )
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ProfilerTest)
 else()
     # set startup project in visual studio
-    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT libprofiler)
+    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 endif()
 
 #export(TARGETS libprofiler NAMESPACE libprofiler::
