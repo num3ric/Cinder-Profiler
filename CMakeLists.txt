@@ -5,7 +5,7 @@ project(
         DESCRIPTION "Cinder block for basic cpu and gpu time profiling."
         LANGUAGES CXX
 )
-option(BUILD_SAMPLES "Build samples" ON)
+option(BUILD_RVPROFILER_SAMPLES "Build samples" OFF)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     # Let's nicely support folders in IDEs
@@ -50,7 +50,7 @@ set_target_properties(rvprofiler
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin/${CINDER_TARGET_SUBFOLDER}/${CMAKE_BUILD_TYPE}
         )
 
-if (BUILD_SAMPLES)
+if (BUILD_RVPROFILER_SAMPLES)
     add_subdirectory(samples)
 endif()
 
