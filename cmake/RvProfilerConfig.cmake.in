@@ -1,0 +1,10 @@
+get_filename_component(RVPROFILER_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(CMakeFindDependencyMacro)
+
+find_dependency(cinder)
+
+if(NOT TARGET RvProfiler::RvProfiler)
+    include("${RVPROFILER_CMAKE_DIR}/RvProfilerTargets.cmake")
+endif()
+
+set(RVPROFILER_lIBRARIES RvProfiler::RvProfiler)
