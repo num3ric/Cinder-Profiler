@@ -55,55 +55,7 @@ if (BUILD_RVPROFILER_SAMPLES)
 endif()
 
 
-##############################################
-# Installation instructions
-
-include(GNUInstallDirs)
-set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/RvProfiler)
-
-install(TARGETS rvprofiler
-        EXPORT rvprofiler-targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        )
-
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-#Export the targets to a script
-install(EXPORT rvprofiler-targets
-        FILE
-        RvProfilerTargets.cmake
-        NAMESPACE
-        RvProfiler::
-        DESTINATION
-        ${INSTALL_CONFIGDIR}
-        )
-
-#Create a ConfigVersion.cmake file
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-        ${CMAKE_CURRENT_BINARY_DIR}/RvProfilerConfigVersion.cmake
-        VERSION ${PROJECT_VERSION}
-        COMPATIBILITY AnyNewerVersion
+export( TARGETS rvprofiler FILE ${PROJECT_BINARY_DIR}/lib/${CINDER_TARGET_SUBFOLDER}/RvProfilerTargets.cmake NAMESPACE RvProfiler:: )
+configure_file( ${CMAKE_CURRENT_LIST_DIR}/cmake/RvProfilerConfig.cmake.in
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/${CINDER_TARGET_SUBFOLDER}/RvProfilerConfig.cmake"
 )
-
-configure_package_config_file(${CMAKE_CURRENT_LIST_DIR}/cmake/RvProfilerConfig.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/RvProfilerConfig.cmake
-        INSTALL_DESTINATION ${INSTALL_CONFIGDIR}
-        )
-
-#Install the config, config version and custom find modules
-install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/RvProfilerConfig.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/RvProfilerConfigVersion.cmake
-        DESTINATION ${INSTALL_CONFIGDIR}
-        )
-
-##############################################
-## Exporting from the build tree
-export(EXPORT rvprofiler-targets
-        FILE ${CMAKE_CURRENT_BINARY_DIR}/RvProfilerTargets.cmake
-        NAMESPACE RvProfiler::)
-
-#Register package in user's package registry
-export(PACKAGE RvProfiler)
